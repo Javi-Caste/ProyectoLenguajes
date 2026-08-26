@@ -24,3 +24,9 @@ class NodoAFD:
     # Método para establecer si el nodo es un estado final
     def esFinal(self):
         return self.Final
+    
+    # Metodo para mostrar las transiciones del nodo
+    def mostrarTransiciones(self):
+        print(f"Transiciones del estado '{self.estado}':")
+        for valor, nodo in self.transiciones.items():
+            print(f"  Valor: '{valor}' -> Estado: '{nodo.estado}'")
