@@ -3,7 +3,7 @@ class NodoAFND:
     def __init__(self, estado, es_final=False):
         self.estado = estado
         self.transiciones = {} # Diccionario: {simbolo: [NodoAFND]}
-        self.es_final = es_final
+        self._es_final = es_final
 # Agrega transiciones desde el nodo actual a otros nodos
     def agregar_transicion(self, simbolo, nodo_destino):
         if simbolo not in self.transiciones:
@@ -14,10 +14,10 @@ class NodoAFND:
         return self.transiciones.get(simbolo, [])
     
     def set_final(self, es_final):
-        self.es_final = es_final
+        self._es_final = es_final
 
     def es_final(self):
-        return self.es_final
+        return self._es_final
     
     # Muestra las transiciones del nodo
     def mostrar_transiciones(self):
