@@ -36,7 +36,7 @@ class AFD:
             raise ValueError(f"Error: Los estados '{origen}' o '{destino}' no existen en el conjunto Q.")
         if simbolo not in self.alfabeto:
             raise ValueError(f"Error: El simbolo '{simbolo}' no pertenece al alfabeto {self.alfabeto}.")
-        self.nodos[origen].agregarTransicion(simbolo, self.nodos[destino])
+        self.nodos[origen].agregarTransicion(simbolo, self.nodos[destino])  #agrega la transicion del nodo origen , con el simbolo apuntando al destino
 
     # Metodo para validar la estructura formal de la quintupla
     def validarEstructura(self):
@@ -50,6 +50,7 @@ class AFD:
         elif self.estadoInicial.estado not in self.nodos:
             errores.append("El estado inicial q0 no pertenece al conjunto Q.")
 
+        # Verificar que todos los estados finales pertenezcan al conjunto de estados Q
         for f in self.estadosFinales:
             if f not in self.nodos:
                 errores.append(f"El estado final '{f}' no pertenece al conjunto Q.")
@@ -61,10 +62,14 @@ class AFD:
                 if simbolo not in nodo.transiciones:
                     transicionesFaltantes.append((nombre, simbolo))
 
+        # Valida si no hay transisiciones faltantes y si no hay errores
         esValido = len(errores) == 0 and len(transicionesFaltantes) == 0
         return esValido, errores, transicionesFaltantes
 
     # Metodo para completar el AFD agregando un estado de trampa
+    # Completa el AFD agregando un estado muerto (trampa) y todos 
+    # los nodos que no tienen todos los simbolos, crean con los
+    # simbolos restantes transiciones a este
     def completarConEstadoTrampa(self):
         _, _, faltantes = self.validarEstructura()
         if not faltantes:
