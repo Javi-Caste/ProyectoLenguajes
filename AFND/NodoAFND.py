@@ -8,7 +8,8 @@ class NodoAFND:
     def agregar_transicion(self, simbolo, nodo_destino):
         if simbolo not in self.transiciones:
             self.transiciones[simbolo] = []
-        self.transiciones[simbolo].append(nodo_destino)
+        if nodo_destino not in self.transiciones[simbolo]:
+            self.transiciones[simbolo].append(nodo_destino)
     
     def obtener_nodos(self, simbolo):
         return self.transiciones.get(simbolo, [])
@@ -25,5 +26,5 @@ class NodoAFND:
             print(f"  Estado '{self.estado}': Sin transiciones definidas.")
             return
         for simbolo, nodos in self.transiciones.items():
-            destinos = ', '.join(nodo.estado for nodo in nodos)
+            destinos = ', '.join(str(nodo.estado) for nodo in nodos)
             print(f"  delta({self.estado}, '{simbolo}') -> {destinos}")
