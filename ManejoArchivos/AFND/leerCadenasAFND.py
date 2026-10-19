@@ -1,7 +1,7 @@
 import os
 
 # Funcion para evaluar un lote de cadenas en el AFND desde un archivo de texto
-def evaluarArchivoCadenasAFND(afnd, ruta_archivo):
+def evaluarArchivoCadenasAFND(afnd, ruta_archivo, mostrar_traza=False):
     if not os.path.exists(ruta_archivo):
         print(f"[ERROR] El archivo '{ruta_archivo}' no existe.")
         return
@@ -27,7 +27,7 @@ def evaluarArchivoCadenasAFND(afnd, ruta_archivo):
         if cadena.startswith("#"):
             continue
         total += 1
-        resultado = afnd.evaluar_cadena(cadena, mostrar_traza=False)
+        resultado = afnd.evaluar_cadena(cadena, mostrar_traza=mostrar_traza)
         if resultado:
             aceptadas += 1
             res_texto = "Aceptada"

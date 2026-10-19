@@ -2,7 +2,7 @@ import os
 from AFD.AFD import AFD
 
 # Funcion para evaluar un lote de cadenas desde un archivo de texto
-def evaluarArchivoCadenas(afd, rutaArchivo):
+def evaluarArchivoCadenas(afd, rutaArchivo, mostrarTraza=False):
     if not os.path.exists(rutaArchivo):
         print(f"[ERROR] El archivo '{rutaArchivo}' no existe.")
         return
@@ -28,7 +28,7 @@ def evaluarArchivoCadenas(afd, rutaArchivo):
         if linea.startswith("#"):
             continue
         total += 1
-        resultado = afd.validarCadena(cadena, mostrarTraza=False)
+        resultado = afd.validarCadena(cadena, mostrarTraza=mostrarTraza)
         if resultado:
             aceptadas += 1
             resTexto = "Aceptada"

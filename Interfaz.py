@@ -8,14 +8,41 @@ from ManejoArchivos.AFND.leerAFND import cargarAFNDDesdeArchivo
 from ManejoArchivos.AFND.leerCadenasAFND import evaluarArchivoCadenasAFND
 
 
+def _preguntar_si_no(mensaje):
+    while True:
+        respuesta = input(mensaje).strip().lower()
+        if respuesta in {"s", "n"}:
+            return respuesta == "s"
+        print("[ERROR] Ingrese 's' para si o 'n' para no.")
+
+
 def _datos_basicos(tipo):
-    nombre = input("Ingrese el nombre del automata: ").strip() or f"{tipo}_Manual"
-    estados = [e.strip() for e in input("Ingrese los estados separados por comas: ").split(",") if e.strip()]
+    nombre = input("Ingrese el nombre del automata: ").strip()
+    while not nombre:
+        print("[ERROR] El nombre no puede estar vacio.")
+        nombre = input("Ingrese el nombre del automata: ").strip()
+
+    usar_predeterminados = _preguntar_si_no("¿Usar estados predeterminados e inicial q0? (s/n): ")
+    if usar_predeterminados:
+        while True:
+            try:
+                cantidad = int(input("Ingrese la cantidad de estados: ").strip())
+                if cantidad > 0:
+                    break
+            except ValueError:
+                pass
+            print("[ERROR] Ingrese un entero mayor que cero.")
+        estados = [f"q{indice}" for indice in range(cantidad)]
+        inicial = "q0"
+        print(f"[INFO] Estados generados: {', '.join(estados)}. Estado inicial: q0.")
+    else:
+        estados = [e.strip() for e in input("Ingrese los estados separados por comas: ").split(",") if e.strip()]
+        inicial = input(f"Ingrese el estado inicial ({estados}): ").strip()
+
     alfabeto = [s.strip() for s in input("Ingrese el alfabeto separado por comas: ").split(",") if s.strip()]
     if not estados or not alfabeto or len(set(estados)) != len(estados) or len(set(alfabeto)) != len(alfabeto):
         print("[ERROR] Estados y alfabeto deben ser no vacios y sin duplicados.")
         return None
-    inicial = input(f"Ingrese el estado inicial ({estados}): ").strip()
     finales = [f.strip() for f in input("Ingrese los estados finales separados por comas: ").split(",") if f.strip()]
     if inicial not in estados or any(final not in estados for final in finales):
         print("[ERROR] El inicial y todos los finales deben pertenecer a los estados declarados.")
@@ -36,10 +63,20 @@ def crearAFDManual():
     for estado in estados:
         for simbolo in alfabeto:
             destino = input(f"  delta({estado}, '{simbolo}') -> ").strip()
+            if destino in {"", "-", "O", "Ø"}:
+                continue
             while destino not in estados:
-                print(f"  [ADVERTENCIA] Debe pertenecer a {estados}")
+                print(f"  [ADVERTENCIA] Debe pertenecer a {estados}, o deje vacio para omitirla.")
                 destino = input(f"  delta({estado}, '{simbolo}') -> ").strip()
+                if destino in {"", "-", "O", "Ø"}:
+                    break
+            if destino in {"", "-", "O", "Ø"}:
+                continue
             afd.agregarTransicion(estado, simbolo, destino)
+    _, _, faltantes = afd.validarEstructura()
+    if faltantes:
+        print(f"[INFO] El AFD quedo incompleto: {len(faltantes)} transiciones faltantes.")
+        print("[INFO] Puede completarlo despues con la opcion 14.")
     return afd
 
 
@@ -138,23 +175,25 @@ def iniciar():
             automata = crearAFDManual()
             if automata:
                 registro = gestor.registrar(automata, "AFD", "manual")
-                print(f"[OK] AFD registrado como {registro.id}.")
+                print(f"[OK] AFD registrado con ID: {registro.id}.")
         elif opcion == "2":
             _mostrar_resultado_carga(cargarAFDDesdeArchivo(input("Ruta del AFD: ").strip()), gestor, "AFD", "archivo")
         elif opcion == "3":
             automata = crearAFNDManual()
             if automata:
                 registro = gestor.registrar(automata, "AFND", "manual")
-                print(f"[OK] AFND registrado como {registro.id}.")
+                print(f"[OK] AFND registrado con ID: {registro.id}.")
         elif opcion == "4":
             _mostrar_resultado_carga(cargarAFNDDesdeArchivo(input("Ruta del AFND: ").strip()), gestor, "AFND", "archivo")
         elif opcion == "5":
             registro = _activo(gestor)
             if registro:
                 if registro.tipo == "AFD":
-                    registro.instancia.mostrarDefinicion(); registro.instancia.mostrarTablaTransiciones()
+                    registro.instancia.mostrarDefinicion()
+                    registro.instancia.mostrarTablaTransiciones()
                 else:
-                    registro.instancia.mostrar_quintupla(); registro.instancia.mostrar_tabla_transiciones()
+                    registro.instancia.mostrar_quintupla()
+                    registro.instancia.mostrar_tabla_transiciones()
         elif opcion == "6":
             registro = _activo(gestor)
             if registro:
@@ -192,14 +231,16 @@ def iniciar():
             registro = _activo(gestor)
             if registro:
                 cadena = input("Cadena (Enter o 'eps' para vacia): ")
-                if registro.tipo == "AFD": registro.instancia.validarCadena(cadena, mostrarTraza=True)
-                else: registro.instancia.evaluar_cadena(cadena, mostrar_traza=True)
+                mostrar_traza = _preguntar_si_no("¿Mostrar traza paso a paso? (s/n): ")
+                if registro.tipo == "AFD": registro.instancia.validarCadena(cadena, mostrarTraza=mostrar_traza)
+                else: registro.instancia.evaluar_cadena(cadena, mostrar_traza=mostrar_traza)
         elif opcion == "11":
             registro = _activo(gestor)
             if registro:
                 ruta = input("Ruta del archivo de cadenas: ").strip()
-                if registro.tipo == "AFD": evaluarArchivoCadenas(registro.instancia, ruta)
-                else: evaluarArchivoCadenasAFND(registro.instancia, ruta)
+                mostrar_traza = _preguntar_si_no("¿Mostrar traza para cada cadena? (s/n): ")
+                if registro.tipo == "AFD": evaluarArchivoCadenas(registro.instancia, ruta, mostrar_traza)
+                else: evaluarArchivoCadenasAFND(registro.instancia, ruta, mostrar_traza)
         elif opcion == "12":
             registro = _activo(gestor)
             if registro:
