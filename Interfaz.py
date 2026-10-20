@@ -1,259 +1,267 @@
 from AFD.AFD import AFD
 from AFND.AFND import AFND
 from AFND.Convertidor import Convertidor
+from GestionAutomatas.GestorAutomatas import GestorAutomatas
 from ManejoArchivos.AFD.leerAFD import cargarAFDDesdeArchivo
 from ManejoArchivos.AFD.leerCadenas import evaluarArchivoCadenas
 from ManejoArchivos.AFND.leerAFND import cargarAFNDDesdeArchivo
 from ManejoArchivos.AFND.leerCadenasAFND import evaluarArchivoCadenasAFND
-# Creacion interactiva de un AFD manual
+
+
+def _preguntar_si_no(mensaje):
+    while True:
+        respuesta = input(mensaje).strip().lower()
+        if respuesta in {"s", "n"}:
+            return respuesta == "s"
+        print("[ERROR] Ingrese 's' para si o 'n' para no.")
+
+
+def _datos_basicos(tipo):
+    nombre = input("Ingrese el nombre del automata: ").strip()
+    while not nombre:
+        print("[ERROR] El nombre no puede estar vacio.")
+        nombre = input("Ingrese el nombre del automata: ").strip()
+
+    usar_predeterminados = _preguntar_si_no("¿Usar estados predeterminados e inicial q0? (s/n): ")
+    if usar_predeterminados:
+        while True:
+            try:
+                cantidad = int(input("Ingrese la cantidad de estados: ").strip())
+                if cantidad > 0:
+                    break
+            except ValueError:
+                pass
+            print("[ERROR] Ingrese un entero mayor que cero.")
+        estados = [f"q{indice}" for indice in range(cantidad)]
+        inicial = "q0"
+        print(f"[INFO] Estados generados: {', '.join(estados)}. Estado inicial: q0.")
+    else:
+        estados = [e.strip() for e in input("Ingrese los estados separados por comas: ").split(",") if e.strip()]
+        inicial = input(f"Ingrese el estado inicial ({estados}): ").strip()
+
+    alfabeto = [s.strip() for s in input("Ingrese el alfabeto separado por comas: ").split(",") if s.strip()]
+    if not estados or not alfabeto or len(set(estados)) != len(estados) or len(set(alfabeto)) != len(alfabeto):
+        print("[ERROR] Estados y alfabeto deben ser no vacios y sin duplicados.")
+        return None
+    finales = [f.strip() for f in input("Ingrese los estados finales separados por comas: ").split(",") if f.strip()]
+    if inicial not in estados or any(final not in estados for final in finales):
+        print("[ERROR] El inicial y todos los finales deben pertenecer a los estados declarados.")
+        return None
+    return nombre, estados, alfabeto, inicial, finales
+
+
 def crearAFDManual():
     print("\n--- CREACION MANUAL DE UN AFD ---")
-    nombre = input("Ingrese el nombre del automata: ").strip() or "AFD_Manual"
-    estados = [e.strip() for e in input("Ingrese los estados separados por comas (ej. q0,q1): ").split(",") if e.strip()]
-    alfabeto = [s.strip() for s in input("Ingrese el alfabeto separado por comas (ej. a,b): ").split(",") if s.strip()]
-    
-    inicial = input(f"Ingrese el estado inicial ({estados}): ").strip()
-    while inicial not in estados:
-        print(f"[ADVERTENCIA] Debe pertenecer a {estados}")
-        inicial = input(f"Ingrese el estado inicial ({estados}): ").strip()
-
-    finales = [f.strip() for f in input("Ingrese los estados finales separados por comas: ").split(",") if f.strip()]
-
+    datos = _datos_basicos("AFD")
+    if not datos:
+        return None
+    nombre, estados, alfabeto, inicial, finales = datos
     afd = AFD(nombre)
     afd.definirAlfabeto(alfabeto)
-    for e in estados:
-        afd.agregarEstado(e, esInicial=(e == inicial), esFinal=(e in finales))
-
-    print("\nDefinicion de transiciones delta(q, sigma) -> q':")
-    for e in estados:
-        for s in alfabeto:
-            dest = input(f"  delta({e}, '{s}') -> ").strip()
-            while dest not in estados:
-                print(f"  [ADVERTENCIA] Estado invalido. Debe pertenecer a {estados}")
-                dest = input(f"  delta({e}, '{s}') -> ").strip()
-            afd.agregarTransicion(e, s, dest)
-
-    print("[OK] AFD creado exitosamente.")
+    for estado in estados:
+        afd.agregarEstado(estado, esInicial=estado == inicial, esFinal=estado in finales)
+    for estado in estados:
+        for simbolo in alfabeto:
+            destino = input(f"  delta({estado}, '{simbolo}') -> ").strip()
+            if destino in {"", "-", "O", "Ø"}:
+                continue
+            while destino not in estados:
+                print(f"  [ADVERTENCIA] Debe pertenecer a {estados}, o deje vacio para omitirla.")
+                destino = input(f"  delta({estado}, '{simbolo}') -> ").strip()
+                if destino in {"", "-", "O", "Ø"}:
+                    break
+            if destino in {"", "-", "O", "Ø"}:
+                continue
+            afd.agregarTransicion(estado, simbolo, destino)
+    _, _, faltantes = afd.validarEstructura()
+    if faltantes:
+        print(f"[INFO] El AFD quedo incompleto: {len(faltantes)} transiciones faltantes.")
+        print("[INFO] Puede completarlo despues con la opcion 14.")
     return afd
 
-# Creacion interactiva de un AFND manual
+
 def crearAFNDManual():
     print("\n--- CREACION MANUAL DE UN AFND ---")
-    nombre = input("Ingrese el nombre del automata: ").strip() or "AFND_Manual"
-    estados = [e.strip() for e in input("Ingrese los estados separados por comas (ej. q0,q1): ").split(",") if e.strip()]
-    alfabeto = [s.strip() for s in input("Ingrese el alfabeto separado por comas (ej. a,b): ").split(",") if s.strip()]
-
-    inicial = input(f"Ingrese el estado inicial ({estados}): ").strip()
-    while inicial not in estados:
-        print(f"[ADVERTENCIA] Debe pertenecer a {estados}")
-        inicial = input(f"Ingrese el estado inicial ({estados}): ").strip()
-
-    finales = [f.strip() for f in input("Ingrese los estados finales separados por comas: ").split(",") if f.strip()]
-
+    datos = _datos_basicos("AFND")
+    if not datos:
+        return None
+    nombre, estados, alfabeto, inicial, finales = datos
     afnd = AFND(nombre)
     afnd.definir_alfabeto(alfabeto)
-    for e in estados:
-        afnd.agregar_nodo(e, es_final=(e in finales), es_inicial=(e == inicial))
-
-    print("\nDefinicion de transiciones delta(q, sigma) -> {destinos} (Separar destinos con espacios, o escribir 'O' para vacio):")
-    for e in estados:
-        for s in alfabeto:
-            dests_input = input(f"  delta({e}, '{s}') -> ").strip()
-            if dests_input not in ["O", "Ø", ""]:
-                for d in dests_input.split():
-                    if d in estados:
-                        afnd.agregar_transicion(e, s, d)
-                    else:
-                        print(f"  [ADVERTENCIA] Estado destino '{d}' ignorado por no existir en Q.")
-
-    print("[OK] AFND creado exitosamente.")
+    for estado in estados:
+        afnd.agregar_nodo(estado, es_final=estado in finales, es_inicial=estado == inicial)
+    print("Use destinos separados por espacios u 'O' para transicion vacia.")
+    for estado in estados:
+        for simbolo in alfabeto:
+            destinos = input(f"  delta({estado}, '{simbolo}') -> ").strip()
+            while destinos not in {"O", "Ø", ""} and any(destino not in estados for destino in destinos.split()):
+                print(f"  [ERROR] Los destinos deben pertenecer a {estados}.")
+                destinos = input(f"  delta({estado}, '{simbolo}') -> ").strip()
+            if destinos not in {"O", "Ø", ""}:
+                for destino in destinos.split():
+                    afnd.agregar_transicion(estado, simbolo, destino)
     return afnd
 
-# Despliegue del menu principal
+
 def mostrarMenu():
     print("\n" + "=" * 65)
-    print("   SISTEMA DE CONVERSION DE AFND A AFD Y SIMULACION - FASE 2")
+    print("   SISTEMA DE AUTOMATAS FINITOS - FASES 1 Y 2")
     print("=" * 65)
-    print(" 1.  Crear un AFD manualmente")
-    print(" 2.  Cargar un AFD desde un archivo .txt")
-    print(" 3.  Crear un AFND manualmente")
-    print(" 4.  Cargar un AFND desde un archivo .txt")
-    print(" 5.  Mostrar la definicion formal y la tabla del automata cargado")
-    print(" 6.  Validar la estructura del automata")
-    print(" 7.  Convertir el AFND cargado en un AFD equivalente")
-    print(" 8.  Mostrar la tabla de equivalencias de macroestados")
-    print(" 9.  Mostrar la tabla de transicion del AFD generado")
-    print(" 10. Evaluar una cadena")
-    print(" 11. Evaluar un archivo de cadenas")
-    print(" 12. Consultar el historial de evaluaciones")
-    print(" 13. Realizar el analisis estructural")
-    print(" 14. Cargar o crear otro automata")
-    print(" 15. Salir")
+    opciones = [
+        "Crear un AFD manualmente", "Cargar un AFD desde un archivo .txt",
+        "Crear un AFND manualmente", "Cargar un AFND desde un archivo .txt",
+        "Mostrar la definicion formal y la tabla del automata activo", "Validar la estructura del automata activo",
+        "Convertir el AFND activo en un AFD equivalente", "Mostrar la tabla de equivalencias del AFD activo",
+        "Mostrar la tabla de transicion del AFD activo", "Evaluar una cadena en el automata activo",
+        "Evaluar un archivo de cadenas en el automata activo", "Consultar el historial del automata activo",
+        "Realizar el analisis estructural del automata activo", "Completar AFD activo con estado de trampa",
+        "Seleccionar automata cargado", "Salir",
+    ]
+    for indice, texto in enumerate(opciones, 1):
+        print(f" {indice:>2}. {texto}")
     print("=" * 65)
 
-# Bucle principal de control
+
+def _mostrar_resultado_carga(resultado, gestor, tipo, origen):
+    if not resultado.exitoso:
+        print("[ERROR] No se cargo el automata:")
+        for error in resultado.errores:
+            print(f"  - {error}")
+        return
+    registro = gestor.registrar(resultado.instancia, tipo, origen)
+    print(f"[OK] {tipo} '{registro.nombre}' registrado como {registro.id} y establecido como activo.")
+    for advertencia in resultado.advertencias:
+        print(f"[ADVERTENCIA] {advertencia}")
+
+
+def _activo(gestor):
+    registro = gestor.obtener_activo()
+    if not registro:
+        print("[ADVERTENCIA] No hay automata activo. Cree, cargue o seleccione uno.")
+    return registro
+
+
+def seleccionarAutomata(gestor):
+    registros = gestor.listar()
+    if not registros:
+        print("[INFO] No hay automatas registrados.")
+        return
+    print("\nAUTOMATAS DISPONIBLES")
+    for indice, registro in enumerate(registros, 1):
+        activo = " | ACTIVO" if gestor.obtener_activo() and gestor.obtener_activo().id == registro.id else ""
+        relacion = f" | de {registro.padre_id}" if registro.padre_id else ""
+        print(f"[{indice}] {registro.id} | {registro.tipo:<4} | {registro.nombre} | {registro.origen}{relacion}{activo}")
+    seleccion = input("Seleccione numero, ID o 0 para cancelar: ").strip()
+    if seleccion == "0":
+        return
+    registro = None
+    if seleccion.isdigit() and 1 <= int(seleccion) <= len(registros):
+        registro = gestor.seleccionar(registros[int(seleccion) - 1].id)
+    else:
+        registro = gestor.seleccionar(seleccion)
+    if registro:
+        print(f"[OK] Automata activo: {registro.id} | {registro.nombre} ({registro.tipo}).")
+    else:
+        print("[ERROR] Seleccion invalida. El automata activo no cambio.")
+
+
 def iniciar():
-    automata_cargado = None
-    tipo_cargado = None       # "AFD" o "AFND"
-    afd_generado = None
-    tabla_equivalencias = []
+    gestor = GestorAutomatas()
     convertidor = Convertidor()
-
     while True:
         mostrarMenu()
-        opcion = input("Seleccione una opcion (1-15): ").strip()
-
+        opcion = input("Seleccione una opcion (1-16): ").strip()
         if opcion == "1":
-            automata_cargado = crearAFDManual()
-            tipo_cargado = "AFD"
-            afd_generado = None
-            tabla_equivalencias = []
-
+            automata = crearAFDManual()
+            if automata:
+                registro = gestor.registrar(automata, "AFD", "manual")
+                print(f"[OK] AFD registrado con ID: {registro.id}.")
         elif opcion == "2":
-            ruta = input("Ingrese la ruta del archivo .txt del AFD: ").strip()
-            cargado = cargarAFDDesdeArchivo(ruta)
-            if cargado:
-                automata_cargado = cargado
-                tipo_cargado = "AFD"
-                afd_generado = None
-                tabla_equivalencias = []
-
+            _mostrar_resultado_carga(cargarAFDDesdeArchivo(input("Ruta del AFD: ").strip()), gestor, "AFD", "archivo")
         elif opcion == "3":
-            automata_cargado = crearAFNDManual()
-            tipo_cargado = "AFND"
-            afd_generado = None
-            tabla_equivalencias = []
-
+            automata = crearAFNDManual()
+            if automata:
+                registro = gestor.registrar(automata, "AFND", "manual")
+                print(f"[OK] AFND registrado con ID: {registro.id}.")
         elif opcion == "4":
-            ruta = input("Ingrese la ruta del archivo .txt del AFND: ").strip()
-            cargado = cargarAFNDDesdeArchivo(ruta)
-            if cargado:
-                automata_cargado = cargado
-                tipo_cargado = "AFND"
-                afd_generado = None
-                tabla_equivalencias = []
-
+            _mostrar_resultado_carga(cargarAFNDDesdeArchivo(input("Ruta del AFND: ").strip()), gestor, "AFND", "archivo")
         elif opcion == "5":
-            if automata_cargado:
-                if tipo_cargado == "AFD":
-                    automata_cargado.mostrarDefinicion()
-                    automata_cargado.mostrarTablaTransiciones()
+            registro = _activo(gestor)
+            if registro:
+                if registro.tipo == "AFD":
+                    registro.instancia.mostrarDefinicion()
+                    registro.instancia.mostrarTablaTransiciones()
                 else:
-                    automata_cargado.mostrar_quintupla()
-                    automata_cargado.mostrar_tabla_transiciones()
-            else:
-                print("[ADVERTENCIA] No hay ningun automata cargado en memoria.")
-
+                    registro.instancia.mostrar_quintupla()
+                    registro.instancia.mostrar_tabla_transiciones()
         elif opcion == "6":
-            if automata_cargado:
-                if tipo_cargado == "AFD":
-                    valido, errores, faltantes = automata_cargado.validarEstructura()
-                    if valido:
-                        print("[OK] El AFD es estructuralmente VALIDO, determinista y completo.")
-                    else:
-                        print("[ADVERTENCIA] Observaciones del AFD:")
-                        for err in errores:
-                            print(f"  - {err}")
-                        if faltantes:
-                            print(f"  - Transiciones faltantes: {len(faltantes)}")
-                else:
-                    valido, errores = automata_cargado.validar_estructura()
-                    if valido:
-                        print("[OK] El AFND es estructuralmente VALIDO.")
-                    else:
-                        print("[ADVERTENCIA] Observaciones del AFND:")
-                        for err in errores:
-                            print(f"  - {err}")
-            else:
-                print("[ADVERTENCIA] Primero debe cargar un automata.")
-
+            registro = _activo(gestor)
+            if registro:
+                validacion = registro.instancia.validarEstructura() if registro.tipo == "AFD" else registro.instancia.validar_estructura()
+                valido, errores = validacion[0], validacion[1]
+                faltantes = validacion[2] if registro.tipo == "AFD" else []
+                print("[OK] Estructura valida." if valido else "[ADVERTENCIA] Estructura incompleta o invalida.")
+                for error in errores: print(f"  - {error}")
+                if faltantes: print(f"  - Transiciones faltantes: {len(faltantes)}")
         elif opcion == "7":
-            if tipo_cargado == "AFND" and automata_cargado:
-                try:
-                    afd_generado, tabla_equivalencias = convertidor.convertir(automata_cargado)
-                    print(f"\n[OK] Conversion exitosa mediante Construccion de Subconjuntos.")
-                    print(f"Se genero el AFD equivalente '{afd_generado.nombre}' con {len(afd_generado.nodos)} macroestados.")
-                except Exception as e:
-                    print(f"[ERROR en conversion]: {e}")
+            registro = _activo(gestor)
+            if not registro or registro.tipo != "AFND":
+                print("[ADVERTENCIA] Debe seleccionar un AFND activo.")
             else:
-                print("[ADVERTENCIA] Debe cargar un AFND valido para ejecutar la conversion.")
-
+                valido, errores = registro.instancia.validar_estructura()
+                if not valido:
+                    print("[ERROR] AFND invalido: " + "; ".join(errores))
+                else:
+                    afd, equivalencias = convertidor.convertir(registro.instancia)
+                    nuevo = gestor.registrar(afd, "AFD", "conversion", registro.id, equivalencias)
+                    print(f"[OK] AFD equivalente registrado como {nuevo.id} y establecido como activo.")
         elif opcion == "8":
-            if tabla_equivalencias:
-                print("\n" + "=" * 50)
-                print("TABLA DE EQUIVALENCIAS DE MACROESTADOS")
-                print("=" * 50)
-                print(f"{'Macroestado AFD':<18} | {'Conjunto de Estados AFND':<25}")
-                print("-" * 50)
-                for macro, conj_str, es_fin in tabla_equivalencias:
-                    marca_final = "*" if es_fin else " "
-                    print(f"  {marca_final} {macro:<14} | {conj_str:<25}")
-                print("-" * 50)
-                print("Leyenda: * Contiene al menos un estado final del AFND\n")
+            registro = _activo(gestor)
+            if not registro or not registro.equivalencias:
+                print("[ADVERTENCIA] Seleccione un AFD generado por conversion.")
             else:
-                print("[ADVERTENCIA] No se ha generado la tabla de equivalencias. Convierta un AFND primero (Opcion 7).")
-
+                print("\nTABLA DE EQUIVALENCIAS")
+                for macro, conjunto, final in registro.equivalencias:
+                    print(f"{'*' if final else ' '} {macro:<12} -> {conjunto}")
         elif opcion == "9":
-            if afd_generado:
-                afd_generado.mostrarTablaTransiciones()
-            else:
-                print("[ADVERTENCIA] No existe un AFD generado. Convierta un AFND primero (Opcion 7).")
-
+            registro = _activo(gestor)
+            if registro and registro.tipo == "AFD": registro.instancia.mostrarTablaTransiciones()
+            elif registro: print("[ADVERTENCIA] El automata activo no es un AFD.")
         elif opcion == "10":
-            # Permite evaluar en el AFD generado si existe, o en el automata cargado
-            target = afd_generado if afd_generado else automata_cargado
-            if target:
-                cadena = input("Ingrese la cadena a evaluar (presione Enter o 'eps' para vacia): ")
-                if hasattr(target, "validarCadena"):
-                    target.validarCadena(cadena, mostrarTraza=True)
-                else:
-                    target.evaluar_cadena(cadena, mostrar_traza=True)
-            else:
-                print("[ADVERTENCIA] Primero debe cargar un automata o convertir un AFND.")
-
+            registro = _activo(gestor)
+            if registro:
+                cadena = input("Cadena (Enter o 'eps' para vacia): ")
+                mostrar_traza = _preguntar_si_no("¿Mostrar traza paso a paso? (s/n): ")
+                if registro.tipo == "AFD": registro.instancia.validarCadena(cadena, mostrarTraza=mostrar_traza)
+                else: registro.instancia.evaluar_cadena(cadena, mostrar_traza=mostrar_traza)
         elif opcion == "11":
-            target = afd_generado if afd_generado else automata_cargado
-            if target:
-                ruta = input("Ingrese la ruta del archivo de cadenas (.txt): ").strip()
-                if hasattr(target, "validarCadena"):
-                    evaluarArchivoCadenas(target, ruta)
-                else:
-                    evaluarArchivoCadenasAFND(target, ruta)
-            else:
-                print("[ADVERTENCIA] Primero debe cargar un automata o convertir un AFND.")
-
+            registro = _activo(gestor)
+            if registro:
+                ruta = input("Ruta del archivo de cadenas: ").strip()
+                mostrar_traza = _preguntar_si_no("¿Mostrar traza para cada cadena? (s/n): ")
+                if registro.tipo == "AFD": evaluarArchivoCadenas(registro.instancia, ruta, mostrar_traza)
+                else: evaluarArchivoCadenasAFND(registro.instancia, ruta, mostrar_traza)
         elif opcion == "12":
-            target = afd_generado if afd_generado else automata_cargado
-            if target:
-                print(f"\n--- HISTORIAL DE EVALUACIONES ({len(target.historial)} registros) ---")
-                if not target.historial:
-                    print("  No hay registros de evaluaciones previas.")
-                else:
-                    for i, h in enumerate(target.historial, 1):
-                        fin = h.get('estado_final', h.get('estados_finales', '-'))
-                        print(f"  {i}. Cadena: \"{h['cadena']}\" -> {h['resultado']} | Final: {fin}")
-            else:
-                print("[ADVERTENCIA] No hay automata activo.")
-
+            registro = _activo(gestor)
+            if registro:
+                print(f"\n--- HISTORIAL ({registro.id}: {registro.nombre}) ---")
+                for indice, entrada in enumerate(registro.instancia.historial, 1):
+                    final = entrada.get('estado_final', entrada.get('estados_finales', '-'))
+                    print(f"{indice}. {entrada['cadena']} -> {entrada['resultado']} | Final: {final}")
+                if not registro.instancia.historial: print("No hay evaluaciones.")
         elif opcion == "13":
-            target = afd_generado if afd_generado else automata_cargado
-            if target:
-                if hasattr(target, "analisisEstructural"):
-                    target.analisisEstructural()
-                else:
-                    target.analisis_estructural()
-            else:
-                print("[ADVERTENCIA] Primero cargue un automata.")
-
+            registro = _activo(gestor)
+            if registro:
+                if registro.tipo == "AFD": registro.instancia.analisisEstructural()
+                else: registro.instancia.analisis_estructural()
         elif opcion == "14":
-            automata_cargado = None
-            tipo_cargado = None
-            afd_generado = None
-            tabla_equivalencias = []
-            print("[INFO] Memoria liberada. Listo para cargar o crear un nuevo automata.")
-
+            registro = _activo(gestor)
+            if registro and registro.tipo == "AFD": registro.instancia.completarConEstadoTrampa()
+            elif registro: print("[ADVERTENCIA] El estado de trampa solo aplica a AFD.")
         elif opcion == "15":
+            seleccionarAutomata(gestor)
+        elif opcion == "16":
             print("\nFinalizando ejecucion del programa.")
             break
         else:
-            print("[ERROR] Opcion no valida. Ingrese un numero del 1 al 15.")
+            print("[ERROR] Opcion no valida.")
