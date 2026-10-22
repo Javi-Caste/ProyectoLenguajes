@@ -135,9 +135,12 @@ def crearAPDManual():
             print("  [ERROR] Debe ingresar exactamente cinco campos separados por comas.")
             continue
         origen, entrada, tope, destino, reemplazo = partes
-        reemplazo = () if reemplazo == APD.EPS else tuple(reemplazo.split(";"))
+        reemplazo_simbolos = () if reemplazo == APD.EPS else tuple(reemplazo.split(";"))
+        if APD.EPS in reemplazo_simbolos or not reemplazo_simbolos and reemplazo != APD.EPS:
+            print("  [ERROR] EPS debe aparecer solo como reemplazo completo.")
+            continue
         try:
-            apd.agregar_transicion(origen, entrada, tope, destino, reemplazo)
+            apd.agregar_transicion(origen, entrada, tope, destino, reemplazo_simbolos)
         except ValueError as error:
             print(f"  [ERROR] {error}")
     valido, errores = apd.validar_estructura()

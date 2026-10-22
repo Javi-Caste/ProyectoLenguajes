@@ -27,12 +27,16 @@ def cargarAPDDesdeArchivo(ruta_archivo):
         return resultado
 
     campos, transiciones, en_transiciones = {}, [], False
+    encabezado_transiciones = False
     for numero, linea in enumerate(lineas, 1):
         limpia = linea.strip()
         if not limpia or limpia.startswith("#"):
             continue
         if limpia.upper() == "TRANSICIONES:":
+            if encabezado_transiciones:
+                resultado.errores.append(f"Línea {numero}: encabezado 'TRANSICIONES:' repetido.")
             en_transiciones = True
+            encabezado_transiciones = True
             continue
         if not en_transiciones:
             coincidencia = RE_CAMPO.match(limpia)
@@ -40,7 +44,9 @@ def cargarAPDDesdeArchivo(ruta_archivo):
                 resultado.errores.append(f"Línea {numero}: sintaxis no reconocida -> '{limpia}'")
                 continue
             clave, valor = coincidencia.group(1).upper(), coincidencia.group(2).strip()
-            if clave in campos:
+            if clave not in REQUERIDOS:
+                resultado.errores.append(f"Línea {numero}: campo no reconocido '{clave}'.")
+            elif clave in campos:
                 resultado.errores.append(f"Línea {numero}: campo '{clave}' repetido.")
             else:
                 campos[clave] = valor
@@ -56,8 +62,11 @@ def cargarAPDDesdeArchivo(ruta_archivo):
             reemplazo_simbolos = () if reemplazo == APD.EPS else tuple(reemplazo.split(";"))
             if APD.EPS in reemplazo_simbolos or not reemplazo_simbolos and reemplazo != APD.EPS:
                 resultado.errores.append(f"Línea {numero}: EPS debe aparecer solo como reemplazo completo.")
+                continue
             transiciones.append((origen, entrada, tope, destino, reemplazo_simbolos, numero))
 
+    if not encabezado_transiciones:
+        resultado.errores.append("Falta el encabezado obligatorio 'TRANSICIONES:'.")
     faltantes = REQUERIDOS - set(campos)
     if faltantes:
         resultado.errores.append("Campos requeridos ausentes: " + ", ".join(sorted(faltantes)) + ".")
