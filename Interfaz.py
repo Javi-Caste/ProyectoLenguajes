@@ -6,6 +6,9 @@ from ManejoArchivos.AFD.leerAFD import cargarAFDDesdeArchivo
 from ManejoArchivos.AFD.leerCadenas import evaluarArchivoCadenas
 from ManejoArchivos.AFND.leerAFND import cargarAFNDDesdeArchivo
 from ManejoArchivos.AFND.leerCadenasAFND import evaluarArchivoCadenasAFND
+from APD.APD import APD
+from ManejoArchivos.APD.leerAPD import cargarAPDDesdeArchivo
+from ManejoArchivos.APD.leerCadenasAPD import evaluarArchivoCadenasAPD
 
 
 def _preguntar_si_no(mensaje):
@@ -103,9 +106,55 @@ def crearAFNDManual():
     return afnd
 
 
+def crearAPDManual():
+    print("\n--- CREACION MANUAL DE UN APD ---")
+    nombre = input("Ingrese el nombre del APD: ").strip()
+    estados = [valor.strip() for valor in input("Estados separados por comas: ").split(",") if valor.strip()]
+    alfabeto = [valor.strip() for valor in input("Alfabeto de entrada separado por comas: ").split(",") if valor.strip()]
+    gamma = [valor.strip() for valor in input("Alfabeto de pila separado por comas: ").split(",") if valor.strip()]
+    inicial = input("Estado inicial: ").strip()
+    z0 = input("Simbolo inicial de pila: ").strip()
+    finales = [valor.strip() for valor in input("Estados finales separados por comas: ").split(",") if valor.strip()]
+    if not nombre or not estados or not alfabeto or not gamma:
+        print("[ERROR] Nombre, estados y alfabetos deben ser no vacios.")
+        return None
+    apd = APD(nombre)
+    apd.definir_alfabeto(alfabeto)
+    apd.definir_alfabeto_pila(gamma)
+    apd.definir_simbolo_inicial_pila(z0)
+    for estado in estados:
+        apd.agregar_estado(estado, estado == inicial, estado in finales)
+    print("Ingrese transiciones como origen,entrada,tope,destino,reemplazo.")
+    print("Use EPS para entrada epsilon o para desapilar. Enter termina la captura.")
+    while True:
+        linea = input("  Transicion: ").strip()
+        if not linea:
+            break
+        partes = [parte.strip() for parte in linea.split(",")]
+        if len(partes) != 5:
+            print("  [ERROR] Debe ingresar exactamente cinco campos separados por comas.")
+            continue
+        origen, entrada, tope, destino, reemplazo = partes
+        reemplazo_simbolos = () if reemplazo == APD.EPS else tuple(reemplazo.split(";"))
+        if APD.EPS in reemplazo_simbolos or not reemplazo_simbolos and reemplazo != APD.EPS:
+            print("  [ERROR] EPS debe aparecer solo como reemplazo completo.")
+            continue
+        try:
+            apd.agregar_transicion(origen, entrada, tope, destino, reemplazo_simbolos)
+        except ValueError as error:
+            print(f"  [ERROR] {error}")
+    valido, errores = apd.validar_estructura()
+    if not valido:
+        print("[ERROR] APD invalido:")
+        for error in errores:
+            print(f"  - {error}")
+        return None
+    return apd
+
+
 def mostrarMenu():
     print("\n" + "=" * 65)
-    print("   SISTEMA DE AUTOMATAS FINITOS - FASES 1 Y 2")
+    print("   SISTEMA DE AUTOMATAS - FASES 1, 2 Y 3")
     print("=" * 65)
     opciones = [
         "Crear un AFD manualmente", "Cargar un AFD desde un archivo .txt",
@@ -116,6 +165,7 @@ def mostrarMenu():
         "Evaluar un archivo de cadenas en el automata activo", "Consultar el historial del automata activo",
         "Realizar el analisis estructural del automata activo", "Completar AFD activo con estado de trampa",
         "Seleccionar automata cargado", "Salir",
+        "Crear un APD manualmente", "Cargar un APD desde un archivo .txt",
     ]
     for indice, texto in enumerate(opciones, 1):
         print(f" {indice:>2}. {texto}")
@@ -170,7 +220,7 @@ def iniciar():
     convertidor = Convertidor()
     while True:
         mostrarMenu()
-        opcion = input("Seleccione una opcion (1-16): ").strip()
+        opcion = input("Seleccione una opcion (1-18): ").strip()
         if opcion == "1":
             automata = crearAFDManual()
             if automata:
@@ -191,8 +241,11 @@ def iniciar():
                 if registro.tipo == "AFD":
                     registro.instancia.mostrarDefinicion()
                     registro.instancia.mostrarTablaTransiciones()
-                else:
+                elif registro.tipo == "AFND":
                     registro.instancia.mostrar_quintupla()
+                    registro.instancia.mostrar_tabla_transiciones()
+                else:
+                    registro.instancia.mostrar_definicion()
                     registro.instancia.mostrar_tabla_transiciones()
         elif opcion == "6":
             registro = _activo(gestor)
@@ -226,7 +279,8 @@ def iniciar():
         elif opcion == "9":
             registro = _activo(gestor)
             if registro and registro.tipo == "AFD": registro.instancia.mostrarTablaTransiciones()
-            elif registro: print("[ADVERTENCIA] El automata activo no es un AFD.")
+            elif registro and registro.tipo == "APD": registro.instancia.mostrar_tabla_transiciones()
+            elif registro: print("[ADVERTENCIA] Esta opcion solo aplica a AFD o APD.")
         elif opcion == "10":
             registro = _activo(gestor)
             if registro:
@@ -240,7 +294,8 @@ def iniciar():
                 ruta = input("Ruta del archivo de cadenas: ").strip()
                 mostrar_traza = _preguntar_si_no("¿Mostrar traza para cada cadena? (s/n): ")
                 if registro.tipo == "AFD": evaluarArchivoCadenas(registro.instancia, ruta, mostrar_traza)
-                else: evaluarArchivoCadenasAFND(registro.instancia, ruta, mostrar_traza)
+                elif registro.tipo == "AFND": evaluarArchivoCadenasAFND(registro.instancia, ruta, mostrar_traza)
+                else: evaluarArchivoCadenasAPD(registro.instancia, ruta, mostrar_traza)
         elif opcion == "12":
             registro = _activo(gestor)
             if registro:
@@ -253,7 +308,8 @@ def iniciar():
             registro = _activo(gestor)
             if registro:
                 if registro.tipo == "AFD": registro.instancia.analisisEstructural()
-                else: registro.instancia.analisis_estructural()
+                elif registro.tipo == "AFND": registro.instancia.analisis_estructural()
+                else: print("[ADVERTENCIA] El analisis estructural heredado no aplica a APD.")
         elif opcion == "14":
             registro = _activo(gestor)
             if registro and registro.tipo == "AFD": registro.instancia.completarConEstadoTrampa()
@@ -263,5 +319,12 @@ def iniciar():
         elif opcion == "16":
             print("\nFinalizando ejecucion del programa.")
             break
+        elif opcion == "17":
+            automata = crearAPDManual()
+            if automata:
+                registro = gestor.registrar(automata, "APD", "manual")
+                print(f"[OK] APD registrado con ID: {registro.id}.")
+        elif opcion == "18":
+            _mostrar_resultado_carga(cargarAPDDesdeArchivo(input("Ruta del APD: ").strip()), gestor, "APD", "archivo")
         else:
             print("[ERROR] Opcion no valida.")
