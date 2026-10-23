@@ -9,6 +9,9 @@ from ManejoArchivos.AFND.leerCadenasAFND import evaluarArchivoCadenasAFND
 from APD.APD import APD
 from ManejoArchivos.APD.leerAPD import cargarAPDDesdeArchivo
 from ManejoArchivos.APD.leerCadenasAPD import evaluarArchivoCadenasAPD
+from APND.APND import APND
+from ManejoArchivos.APND.leerAPND import cargarAPNDDesdeArchivo
+from ManejoArchivos.APND.leerCadenasAPND import evaluarArchivoCadenasAPND
 
 
 def _preguntar_si_no(mensaje):
@@ -152,6 +155,66 @@ def crearAPDManual():
     return apd
 
 
+def crearAPNDManual():
+    print("\n--- CREACION MANUAL DE UN APND ---")
+    nombre = input("Ingrese el nombre del APND: ").strip()
+    estados = [valor.strip() for valor in input("Estados separados por comas: ").split(",") if valor.strip()]
+    alfabeto = [valor.strip() for valor in input("Alfabeto de entrada separado por comas: ").split(",") if valor.strip()]
+    gamma = [valor.strip() for valor in input("Alfabeto de pila separado por comas: ").split(",") if valor.strip()]
+    inicial = input("Estado inicial: ").strip()
+    z0 = input("Simbolo inicial de pila: ").strip()
+    finales = [valor.strip() for valor in input("Estados finales separados por comas: ").split(",") if valor.strip()]
+    if not nombre or not estados or not alfabeto or not gamma:
+        print("[ERROR] Nombre, estados y alfabetos deben ser no vacios.")
+        return None
+    apnd = APND(nombre)
+    apnd.definir_alfabeto(alfabeto)
+    apnd.definir_alfabeto_pila(gamma)
+    apnd.definir_simbolo_inicial_pila(z0)
+    for estado in estados:
+        apnd.agregar_estado(estado, estado == inicial, estado in finales)
+    print("Ingrese transiciones como origen,entrada,tope,destino1,reemplazo1|destino2,reemplazo2.")
+    print("Use EPS para entrada epsilon o para desapilar. Enter termina la captura.")
+    while True:
+        linea = input("  Transicion: ").strip()
+        if not linea:
+            break
+        partes = [parte.strip() for parte in linea.split(",", 3)]
+        if len(partes) != 4 or not all(partes):
+            print("  [ERROR] Debe ingresar origen, entrada, tope y al menos una alternativa.")
+            continue
+        origen, entrada, tope, texto_alternativas = partes
+        alternativas = []
+        linea_valida = True
+        for alternativa in texto_alternativas.split("|"):
+            datos = [dato.strip() for dato in alternativa.split(",")]
+            if len(datos) != 2 or not all(datos):
+                print("  [ERROR] Cada alternativa debe tener destino y reemplazo.")
+                linea_valida = False
+                break
+            destino, reemplazo = datos
+            reemplazo_simbolos = () if reemplazo == APND.EPS else tuple(reemplazo.split(";"))
+            if APND.EPS in reemplazo_simbolos or not reemplazo_simbolos and reemplazo != APND.EPS:
+                print("  [ERROR] EPS debe aparecer solo como reemplazo completo.")
+                linea_valida = False
+                break
+            alternativas.append((destino, reemplazo_simbolos))
+        if not linea_valida:
+            continue
+        try:
+            for destino, reemplazo in alternativas:
+                apnd.agregar_transicion(origen, entrada, tope, destino, reemplazo)
+        except ValueError as error:
+            print(f"  [ERROR] {error}")
+    valido, errores = apnd.validar_estructura()
+    if not valido:
+        print("[ERROR] APND invalido:")
+        for error in errores:
+            print(f"  - {error}")
+        return None
+    return apnd
+
+
 def mostrarMenu():
     print("\n" + "=" * 65)
     print("   SISTEMA DE AUTOMATAS - FASES 1, 2 Y 3")
@@ -166,6 +229,7 @@ def mostrarMenu():
         "Realizar el analisis estructural del automata activo", "Completar AFD activo con estado de trampa",
         "Seleccionar automata cargado", "Salir",
         "Crear un APD manualmente", "Cargar un APD desde un archivo .txt",
+        "Crear un APND manualmente", "Cargar un APND desde un archivo .txt",
     ]
     for indice, texto in enumerate(opciones, 1):
         print(f" {indice:>2}. {texto}")
@@ -220,7 +284,7 @@ def iniciar():
     convertidor = Convertidor()
     while True:
         mostrarMenu()
-        opcion = input("Seleccione una opcion (1-18): ").strip()
+        opcion = input("Seleccione una opcion (1-20): ").strip()
         if opcion == "1":
             automata = crearAFDManual()
             if automata:
@@ -279,8 +343,8 @@ def iniciar():
         elif opcion == "9":
             registro = _activo(gestor)
             if registro and registro.tipo == "AFD": registro.instancia.mostrarTablaTransiciones()
-            elif registro and registro.tipo == "APD": registro.instancia.mostrar_tabla_transiciones()
-            elif registro: print("[ADVERTENCIA] Esta opcion solo aplica a AFD o APD.")
+            elif registro and registro.tipo in {"APD", "APND"}: registro.instancia.mostrar_tabla_transiciones()
+            elif registro: print("[ADVERTENCIA] Esta opcion solo aplica a AFD, APD o APND.")
         elif opcion == "10":
             registro = _activo(gestor)
             if registro:
@@ -295,7 +359,8 @@ def iniciar():
                 mostrar_traza = _preguntar_si_no("¿Mostrar traza para cada cadena? (s/n): ")
                 if registro.tipo == "AFD": evaluarArchivoCadenas(registro.instancia, ruta, mostrar_traza)
                 elif registro.tipo == "AFND": evaluarArchivoCadenasAFND(registro.instancia, ruta, mostrar_traza)
-                else: evaluarArchivoCadenasAPD(registro.instancia, ruta, mostrar_traza)
+                elif registro.tipo == "APD": evaluarArchivoCadenasAPD(registro.instancia, ruta, mostrar_traza)
+                else: evaluarArchivoCadenasAPND(registro.instancia, ruta, mostrar_traza)
         elif opcion == "12":
             registro = _activo(gestor)
             if registro:
@@ -326,5 +391,12 @@ def iniciar():
                 print(f"[OK] APD registrado con ID: {registro.id}.")
         elif opcion == "18":
             _mostrar_resultado_carga(cargarAPDDesdeArchivo(input("Ruta del APD: ").strip()), gestor, "APD", "archivo")
+        elif opcion == "19":
+            automata = crearAPNDManual()
+            if automata:
+                registro = gestor.registrar(automata, "APND", "manual")
+                print(f"[OK] APND registrado con ID: {registro.id}.")
+        elif opcion == "20":
+            _mostrar_resultado_carga(cargarAPNDDesdeArchivo(input("Ruta del APND: ").strip()), gestor, "APND", "archivo")
         else:
             print("[ERROR] Opcion no valida.")
