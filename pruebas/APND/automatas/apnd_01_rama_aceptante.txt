@@ -1,0 +1,10 @@
+NOMBRE=APND_Rama_Aceptante
+TIPO=APND
+ESTADOS=q0,qacepta,qrechaza
+ALFABETO=a
+ALFABETO_PILA=Z0
+INICIAL=q0
+INICIAL_PILA=Z0
+FINALES=qacepta
+TRANSICIONES:
+q0,a,Z0,qacepta,Z0|qrechaza,Z0

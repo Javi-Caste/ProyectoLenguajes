@@ -1,0 +1,13 @@
+NOMBRE=AFND_Contiene_ab
+TIPO=AFND
+ESTADOS=q0,q1,qf
+ALFABETO=a,b
+INICIAL=q0
+FINALES=qf
+TRANSICIONES:
+q0,a,q0 q1
+q0,b,q0
+q1,a,O
+q1,b,qf
+qf,a,qf
+qf,b,qf

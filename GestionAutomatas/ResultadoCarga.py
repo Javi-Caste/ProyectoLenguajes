@@ -6,6 +6,7 @@ from typing import Any
 @dataclass
 class ResultadoCarga:
     instancia: Any | None = None
+    tipo: str | None = None
     errores: list[str] = field(default_factory=list)
     advertencias: list[str] = field(default_factory=list)
 

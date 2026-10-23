@@ -1,5 +1,12 @@
 from AFND.NodoAFND import NodoAFND
 
+EPSILON_EQUIVALENTES = {"ε", "λ", "eps", "epsilon", "lambda", "e"}
+
+
+def es_simbolo_epsilon(simbolo):
+    return isinstance(simbolo, str) and simbolo.strip().lower() in EPSILON_EQUIVALENTES
+
+
 class AFND:
     # Constructor de la clase AFND
     def __init__(self, nombre="AFND"):
@@ -12,6 +19,11 @@ class AFND:
 
     # Metodo para definir el alfabeto
     def definir_alfabeto(self, alfabeto):
+        simbolos_epsilon = [simbolo for simbolo in alfabeto if es_simbolo_epsilon(simbolo)]
+        if simbolos_epsilon:
+            raise ValueError(
+                f"El alfabeto del AFND no puede contener epsilon ni sus equivalentes: {simbolos_epsilon}."
+            )
         self.alfabeto = set(alfabeto)
 
     # Metodo para agregar un nodo al AFND
@@ -34,6 +46,8 @@ class AFND:
 
     # Metodo para agregar una transicion
     def agregar_transicion(self, estado_origen, simbolo, estado_destino):
+        if es_simbolo_epsilon(simbolo):
+            raise ValueError(f"{simbolo} epsilon o equivalentes no permitidas como simbolos de transicion.")
         if simbolo not in self.alfabeto:
             raise ValueError(f"El simbolo '{simbolo}' no pertenece al alfabeto definido.")
         if estado_origen not in self.nodos:
@@ -45,6 +59,15 @@ class AFND:
     # Metodo para validar la estructura del AFND
     def validar_estructura(self):
         errores = []
+        for simbolo in self.alfabeto:
+            if es_simbolo_epsilon(simbolo):
+                errores.append(f"{simbolo} epsilon o equivalentes no permitidas en el alfabeto.")
+
+        for nodo in self.nodos.values():
+            for simbolo in nodo.transiciones:
+                if es_simbolo_epsilon(simbolo):
+                    errores.append(f"El estado '{nodo.estado}' posee una transicion epsilon no permitida.")
+
         if not self.nodos:
             errores.append("El conjunto de estados Q esta vacio.")
         if not self.alfabeto:
@@ -143,7 +166,7 @@ class AFND:
         if self.estado_inicial is None:
             raise ValueError("No se ha definido un estado inicial para el automata.")
 
-        cadena_limpia = "" if cadena in ["ε", "eps", "lambda", "λ"] else cadena
+        cadena_limpia = "" if cadena in ["ε","E", "eps", "lambda", "λ"] else cadena
 
         def nombres_estados(estados):
             return "{" + ",".join(sorted(str(e.estado) for e in estados)) + "}" if estados else "O"

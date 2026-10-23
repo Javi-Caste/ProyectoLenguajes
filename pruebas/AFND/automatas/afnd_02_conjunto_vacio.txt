@@ -1,0 +1,13 @@
+NOMBRE=AFND_Conjunto_Vacio
+TIPO=AFND
+ESTADOS=q0,q1,qf
+ALFABETO=a,b
+INICIAL=q0
+FINALES=qf
+TRANSICIONES:
+q0,a,q1
+q0,b,O
+q1,a,q1
+q1,b,O
+qf,a,qf
+qf,b,qf

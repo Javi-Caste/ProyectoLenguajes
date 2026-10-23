@@ -1,0 +1,13 @@
+NOMBRE=AFND_Termina_a_o_b
+TIPO=AFND
+ESTADOS=q0,qa,qb
+ALFABETO=a,b
+INICIAL=q0
+FINALES=qa,qb
+TRANSICIONES:
+q0,a,q0 qa
+q0,b,q0 qb
+qa,a,O
+qa,b,O
+qb,a,O
+qb,b,O
