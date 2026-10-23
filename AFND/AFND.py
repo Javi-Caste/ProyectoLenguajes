@@ -166,7 +166,7 @@ class AFND:
         if self.estado_inicial is None:
             raise ValueError("No se ha definido un estado inicial para el automata.")
 
-        cadena_limpia = "" if cadena in ["ε", "eps", "lambda", "λ"] else cadena
+        cadena_limpia = "" if cadena in ["ε","E", "eps", "lambda", "λ"] else cadena
 
         def nombres_estados(estados):
             return "{" + ",".join(sorted(str(e.estado) for e in estados)) + "}" if estados else "O"
