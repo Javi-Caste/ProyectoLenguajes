@@ -1,0 +1,12 @@
+# Inválido: dos alternativas para la misma terna (q0, a, Z0).
+NOMBRE=APD_Transicion_Duplicada
+TIPO=APD
+ESTADOS=q0,q1,q2
+ALFABETO=a
+ALFABETO_PILA=Z0
+INICIAL=q0
+INICIAL_PILA=Z0
+FINALES=q1
+TRANSICIONES:
+q0,a,Z0,q1,Z0
+q0,a,Z0,q2,Z0

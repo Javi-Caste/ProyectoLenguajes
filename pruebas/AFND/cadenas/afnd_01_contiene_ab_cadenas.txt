@@ -1,0 +1,8 @@
+ab
+aab
+baba
+aba
+
+epsilon
+a
+bbb

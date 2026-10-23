@@ -1,0 +1,11 @@
+NOMBRE=AFD_Lenguaje_Vacio
+TIPO=AFD
+ESTADOS=q0,qf
+ALFABETO=a,b
+INICIAL=q0
+FINALES=qf
+TRANSICIONES:
+q0,a,q0
+q0,b,q0
+qf,a,qf
+qf,b,qf

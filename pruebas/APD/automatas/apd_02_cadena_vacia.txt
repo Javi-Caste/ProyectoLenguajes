@@ -1,0 +1,11 @@
+# Acepta únicamente la cadena vacía mediante EPS.
+NOMBRE=APD_Cadena_Vacia
+TIPO=APD
+ESTADOS=q0,qf
+ALFABETO=a
+ALFABETO_PILA=Z0
+INICIAL=q0
+INICIAL_PILA=Z0
+FINALES=qf
+TRANSICIONES:
+q0,EPS,Z0,qf,Z0

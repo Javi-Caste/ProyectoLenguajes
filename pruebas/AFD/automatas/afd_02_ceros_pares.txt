@@ -1,0 +1,11 @@
+NOMBRE=AFD_Ceros_Pares
+TIPO=AFD
+ESTADOS=q_par,q_impar
+ALFABETO=0,1
+INICIAL=q_par
+FINALES=q_par
+TRANSICIONES:
+q_par,0,q_impar
+q_par,1,q_par
+q_impar,0,q_par
+q_impar,1,q_impar
