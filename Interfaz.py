@@ -1,5 +1,5 @@
 from AFD.AFD import AFD
-from AFND.AFND import AFND
+from AFND.AFND import AFND, es_simbolo_epsilon
 from AFND.Convertidor import Convertidor
 from GestionAutomatas.GestorAutomatas import GestorAutomatas
 from ManejoArchivos.AFD.leerAFD import cargarAFDDesdeArchivo
@@ -92,6 +92,13 @@ def crearAFNDManual():
     if not datos:
         return None
     nombre, estados, alfabeto, inicial, finales = datos
+    simbolos_epsilon = [simbolo for simbolo in alfabeto if es_simbolo_epsilon(simbolo)]
+    if simbolos_epsilon:
+        print(
+            "[ERROR] El alfabeto de un AFND no puede incluir epsilon ni sus equivalentes: "
+            + ", ".join(simbolos_epsilon)
+        )
+        return None
     afnd = AFND(nombre)
     afnd.definir_alfabeto(alfabeto)
     for estado in estados:

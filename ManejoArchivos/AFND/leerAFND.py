@@ -1,7 +1,7 @@
 import os
 import re
 
-from AFND.AFND import AFND
+from AFND.AFND import AFND, es_simbolo_epsilon
 from GestionAutomatas.ResultadoCarga import ResultadoCarga
 
 RE_NOMBRE = re.compile(r'^(?:NOMBRE-AFND|NOMBRE\s+AFND|NOMBRE)\s*(?:[:=]\s*|\s+)(.+)$', re.IGNORECASE)
@@ -54,7 +54,7 @@ def cargarAFNDDesdeArchivo(ruta_archivo):
                 resultado.errores.append(f"Linea {numero}: sintaxis no reconocida -> '{limpia}'")
         elif (match := RE_TRANSICION.match(limpia)):
             origen, simbolo, destinos_raw = match.group(1), match.group(2), match.group(3).strip()
-            if simbolo in {'ε', 'lambda', 'eps', 'E'}:
+            if es_simbolo_epsilon(simbolo):
                 resultado.errores.append(f"Linea {numero}: transicion epsilon fuera del alcance del AFND.")
             destinos = [] if destinos_raw in {'O', 'Ø', 'vacio', ''} else destinos_raw.split()
             transiciones.append((origen, simbolo, destinos, numero))
@@ -65,6 +65,11 @@ def cargarAFNDDesdeArchivo(ruta_archivo):
         resultado.errores.append("ESTADOS no fue definido o esta vacio.")
     if not alfabeto:
         resultado.errores.append("ALFABETO no fue definido o esta vacio.")
+    for simbolo in alfabeto:
+        if es_simbolo_epsilon(simbolo):
+            resultado.errores.append(
+                f"El simbolo '{simbolo}' no puede pertenecer al ALFABETO de un AFND."
+            )
     if inicial not in estados:
         resultado.errores.append("El estado INICIAL debe pertenecer a ESTADOS.")
     for final in finales:
