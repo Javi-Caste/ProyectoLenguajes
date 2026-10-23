@@ -2,16 +2,13 @@ from AFD.AFD import AFD
 from AFND.AFND import AFND, es_simbolo_epsilon
 from AFND.Convertidor import Convertidor
 from GestionAutomatas.GestorAutomatas import GestorAutomatas
-from ManejoArchivos.AFD.leerAFD import cargarAFDDesdeArchivo
 from ManejoArchivos.AFD.leerCadenas import evaluarArchivoCadenas
-from ManejoArchivos.AFND.leerAFND import cargarAFNDDesdeArchivo
 from ManejoArchivos.AFND.leerCadenasAFND import evaluarArchivoCadenasAFND
 from APD.APD import APD
-from ManejoArchivos.APD.leerAPD import cargarAPDDesdeArchivo
 from ManejoArchivos.APD.leerCadenasAPD import evaluarArchivoCadenasAPD
 from APND.APND import APND
-from ManejoArchivos.APND.leerAPND import cargarAPNDDesdeArchivo
 from ManejoArchivos.APND.leerCadenasAPND import evaluarArchivoCadenasAPND
+from ManejoArchivos.cargarAutomata import cargar_automata_desde_archivo
 
 
 def _preguntar_si_no(mensaje):
@@ -227,30 +224,28 @@ def mostrarMenu():
     print("   SISTEMA DE AUTOMATAS - FASES 1, 2 Y 3")
     print("=" * 65)
     opciones = [
-        "Crear un AFD manualmente", "Cargar un AFD desde un archivo .txt",
-        "Crear un AFND manualmente", "Cargar un AFND desde un archivo .txt",
-        "Mostrar la definicion formal y la tabla del automata activo", "Validar la estructura del automata activo",
-        "Convertir el AFND activo en un AFD equivalente", "Mostrar la tabla de equivalencias del AFD activo",
-        "Mostrar la tabla de transicion del AFD activo", "Evaluar una cadena en el automata activo",
-        "Evaluar un archivo de cadenas en el automata activo", "Consultar el historial del automata activo",
-        "Realizar el analisis estructural del automata activo", "Completar AFD activo con estado de trampa",
-        "Seleccionar automata cargado", "Salir",
-        "Crear un APD manualmente", "Cargar un APD desde un archivo .txt",
-        "Crear un APND manualmente", "Cargar un APND desde un archivo .txt",
+        "Crear un AFD manualmente", "Cargar un automata desde un archivo .txt",
+        "Crear un AFND manualmente", "Mostrar la definicion formal y la tabla del automata activo",
+        "Validar la estructura del automata activo", "Convertir el AFND activo en un AFD equivalente",
+        "Mostrar la tabla de equivalencias del AFD activo", "Mostrar la tabla de transicion del AFD activo",
+        "Evaluar una cadena en el automata activo", "Evaluar un archivo de cadenas en el automata activo",
+        "Consultar el historial del automata activo", "Realizar el analisis estructural del automata activo",
+        "Completar AFD activo con estado de trampa", "Seleccionar automata cargado", "Salir",
+        "Crear un APD manualmente", "Crear un APND manualmente",
     ]
     for indice, texto in enumerate(opciones, 1):
         print(f" {indice:>2}. {texto}")
     print("=" * 65)
 
 
-def _mostrar_resultado_carga(resultado, gestor, tipo, origen):
+def _mostrar_resultado_carga(resultado, gestor, origen):
     if not resultado.exitoso:
         print("[ERROR] No se cargo el automata:")
         for error in resultado.errores:
             print(f"  - {error}")
         return
-    registro = gestor.registrar(resultado.instancia, tipo, origen)
-    print(f"[OK] {tipo} '{registro.nombre}' registrado como {registro.id} y establecido como activo.")
+    registro = gestor.registrar(resultado.instancia, resultado.tipo, origen)
+    print(f"[OK] {resultado.tipo} '{registro.nombre}' registrado como {registro.id} y establecido como activo.")
     for advertencia in resultado.advertencias:
         print(f"[ADVERTENCIA] {advertencia}")
 
@@ -291,22 +286,21 @@ def iniciar():
     convertidor = Convertidor()
     while True:
         mostrarMenu()
-        opcion = input("Seleccione una opcion (1-20): ").strip()
+        opcion = input("Seleccione una opcion (1-17): ").strip()
         if opcion == "1":
             automata = crearAFDManual()
             if automata:
                 registro = gestor.registrar(automata, "AFD", "manual")
                 print(f"[OK] AFD registrado con ID: {registro.id}.")
         elif opcion == "2":
-            _mostrar_resultado_carga(cargarAFDDesdeArchivo(input("Ruta del AFD: ").strip()), gestor, "AFD", "archivo")
+            ruta = input("Ruta del automata: ").strip()
+            _mostrar_resultado_carga(cargar_automata_desde_archivo(ruta), gestor, "archivo")
         elif opcion == "3":
             automata = crearAFNDManual()
             if automata:
                 registro = gestor.registrar(automata, "AFND", "manual")
                 print(f"[OK] AFND registrado con ID: {registro.id}.")
         elif opcion == "4":
-            _mostrar_resultado_carga(cargarAFNDDesdeArchivo(input("Ruta del AFND: ").strip()), gestor, "AFND", "archivo")
-        elif opcion == "5":
             registro = _activo(gestor)
             if registro:
                 if registro.tipo == "AFD":
@@ -318,7 +312,7 @@ def iniciar():
                 else:
                     registro.instancia.mostrar_definicion()
                     registro.instancia.mostrar_tabla_transiciones()
-        elif opcion == "6":
+        elif opcion == "5":
             registro = _activo(gestor)
             if registro:
                 validacion = registro.instancia.validarEstructura() if registro.tipo == "AFD" else registro.instancia.validar_estructura()
@@ -327,7 +321,7 @@ def iniciar():
                 print("[OK] Estructura valida." if valido else "[ADVERTENCIA] Estructura incompleta o invalida.")
                 for error in errores: print(f"  - {error}")
                 if faltantes: print(f"  - Transiciones faltantes: {len(faltantes)}")
-        elif opcion == "7":
+        elif opcion == "6":
             registro = _activo(gestor)
             if not registro or registro.tipo != "AFND":
                 print("[ADVERTENCIA] Debe seleccionar un AFND activo.")
@@ -339,7 +333,7 @@ def iniciar():
                     afd, equivalencias = convertidor.convertir(registro.instancia)
                     nuevo = gestor.registrar(afd, "AFD", "conversion", registro.id, equivalencias)
                     print(f"[OK] AFD equivalente registrado como {nuevo.id} y establecido como activo.")
-        elif opcion == "8":
+        elif opcion == "7":
             registro = _activo(gestor)
             if not registro or not registro.equivalencias:
                 print("[ADVERTENCIA] Seleccione un AFD generado por conversion.")
@@ -347,19 +341,19 @@ def iniciar():
                 print("\nTABLA DE EQUIVALENCIAS")
                 for macro, conjunto, final in registro.equivalencias:
                     print(f"{'*' if final else ' '} {macro:<12} -> {conjunto}")
-        elif opcion == "9":
+        elif opcion == "8":
             registro = _activo(gestor)
             if registro and registro.tipo == "AFD": registro.instancia.mostrarTablaTransiciones()
             elif registro and registro.tipo in {"APD", "APND"}: registro.instancia.mostrar_tabla_transiciones()
             elif registro: print("[ADVERTENCIA] Esta opcion solo aplica a AFD, APD o APND.")
-        elif opcion == "10":
+        elif opcion == "9":
             registro = _activo(gestor)
             if registro:
                 cadena = input("Cadena (Enter o 'eps' para vacia): ")
                 mostrar_traza = _preguntar_si_no("¿Mostrar traza paso a paso? (s/n): ")
                 if registro.tipo == "AFD": registro.instancia.validarCadena(cadena, mostrarTraza=mostrar_traza)
                 else: registro.instancia.evaluar_cadena(cadena, mostrar_traza=mostrar_traza)
-        elif opcion == "11":
+        elif opcion == "10":
             registro = _activo(gestor)
             if registro:
                 ruta = input("Ruta del archivo de cadenas: ").strip()
@@ -368,7 +362,7 @@ def iniciar():
                 elif registro.tipo == "AFND": evaluarArchivoCadenasAFND(registro.instancia, ruta, mostrar_traza)
                 elif registro.tipo == "APD": evaluarArchivoCadenasAPD(registro.instancia, ruta, mostrar_traza)
                 else: evaluarArchivoCadenasAPND(registro.instancia, ruta, mostrar_traza)
-        elif opcion == "12":
+        elif opcion == "11":
             registro = _activo(gestor)
             if registro:
                 print(f"\n--- HISTORIAL ({registro.id}: {registro.nombre}) ---")
@@ -376,34 +370,30 @@ def iniciar():
                     final = entrada.get('estado_final', entrada.get('estados_finales', '-'))
                     print(f"{indice}. {entrada['cadena']} -> {entrada['resultado']} | Final: {final}")
                 if not registro.instancia.historial: print("No hay evaluaciones.")
-        elif opcion == "13":
+        elif opcion == "12":
             registro = _activo(gestor)
             if registro:
                 if registro.tipo == "AFD": registro.instancia.analisisEstructural()
                 elif registro.tipo == "AFND": registro.instancia.analisis_estructural()
                 else: print("[ADVERTENCIA] El analisis estructural heredado no aplica a APD.")
-        elif opcion == "14":
+        elif opcion == "13":
             registro = _activo(gestor)
             if registro and registro.tipo == "AFD": registro.instancia.completarConEstadoTrampa()
             elif registro: print("[ADVERTENCIA] El estado de trampa solo aplica a AFD.")
-        elif opcion == "15":
+        elif opcion == "14":
             seleccionarAutomata(gestor)
-        elif opcion == "16":
+        elif opcion == "15":
             print("\nFinalizando ejecucion del programa.")
             break
-        elif opcion == "17":
+        elif opcion == "16":
             automata = crearAPDManual()
             if automata:
                 registro = gestor.registrar(automata, "APD", "manual")
                 print(f"[OK] APD registrado con ID: {registro.id}.")
-        elif opcion == "18":
-            _mostrar_resultado_carga(cargarAPDDesdeArchivo(input("Ruta del APD: ").strip()), gestor, "APD", "archivo")
-        elif opcion == "19":
+        elif opcion == "17":
             automata = crearAPNDManual()
             if automata:
                 registro = gestor.registrar(automata, "APND", "manual")
                 print(f"[OK] APND registrado con ID: {registro.id}.")
-        elif opcion == "20":
-            _mostrar_resultado_carga(cargarAPNDDesdeArchivo(input("Ruta del APND: ").strip()), gestor, "APND", "archivo")
         else:
             print("[ERROR] Opcion no valida.")
